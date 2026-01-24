@@ -5,7 +5,7 @@ Personal expense management system with Clean Architecture.
 ## 🚀 Tech Stack
 
 **Backend:**
-- .NET 8 / C# 12
+- .NET 9 / C# 13
 - Entity Framework Core
 - SQL Server (Docker)
 - xUnit + FluentAssertions
