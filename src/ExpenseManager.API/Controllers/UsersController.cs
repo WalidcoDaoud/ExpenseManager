@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using ExpenseManager.Domain.Entities;
 using ExpenseManager.Domain.ValueObjects;
+using ExpenseManager.API.DTOs.Users.Requests;
 
 namespace ExpenseManager.API.Controllers;
 
@@ -8,11 +9,10 @@ namespace ExpenseManager.API.Controllers;
 [Route("api/[controller]")]
 public class UsersController : ControllerBase
 {
-    // Lista em memória (temporário para teste)
     private static readonly List<User> _users = new();
 
     /// <summary>
-    /// Cria um novo usuário
+    /// Create a new user
     /// </summary>
     [HttpPost]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -23,7 +23,6 @@ public class UsersController : ControllerBase
         {
             var email = new Email(request.Email);
 
-            // Hash temporário (vamos melhorar depois)
             var password = new HashedPassword(
                 hash: Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(request.Password)),
                 salt: "temp-salt"
@@ -48,7 +47,7 @@ public class UsersController : ControllerBase
     }
 
     /// <summary>
-    /// Lista todos os usuários
+    /// List all Users
     /// </summary>
     [HttpGet]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -68,7 +67,7 @@ public class UsersController : ControllerBase
     }
 
     /// <summary>
-    /// Busca um usuário por ID
+    /// Get a user by ID
     /// </summary>
     [HttpGet("{id}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -92,7 +91,7 @@ public class UsersController : ControllerBase
     }
 
     /// <summary>
-    /// Desativa um usuário
+    /// Deactivate a user
     /// </summary>
     [HttpPut("{id}/deactivate")]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -115,7 +114,7 @@ public class UsersController : ControllerBase
     }
 
     /// <summary>
-    /// Ativa um usuário
+    /// Activate a user
     /// </summary>
     [HttpPut("{id}/activate")]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -138,13 +137,13 @@ public class UsersController : ControllerBase
     }
 
     /// <summary>
-    /// Atualiza o nome do usuário
+    /// Update the name of a user
     /// </summary>
     [HttpPut("{id}/name")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public IActionResult UpdateName(Guid id, [FromBody] UpdateNameRequest request)
+    public IActionResult UpdateName(Guid id, [FromBody] UpdateUserNameRequest request)
     {
         var user = _users.FirstOrDefault(u => u.Id == id);
 
@@ -168,7 +167,3 @@ public class UsersController : ControllerBase
         }
     }
 }
-
-// DTOs (Data Transfer Objects)
-public record CreateUserRequest(string Name, string Email, string Password);
-public record UpdateNameRequest(string Name);

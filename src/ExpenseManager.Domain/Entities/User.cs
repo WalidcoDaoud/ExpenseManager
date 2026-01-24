@@ -11,10 +11,8 @@ public class User : Entity
     public bool IsActive { get; private set; }
     public DateTime? LastLoginAt { get; private set; }
 
-    // EF Core precisa de um construtor sem parâmetros
     private User() { }
 
-    // Construtor para criar novo usuário
     public User(string name, Email email, HashedPassword password)
     {
         if (string.IsNullOrWhiteSpace(name))
@@ -29,7 +27,6 @@ public class User : Entity
         IsActive = true;
     }
 
-    // Métodos de comportamento (não apenas getters/setters!)
     public void UpdateName(string newName)
     {
         if (string.IsNullOrWhiteSpace(newName))

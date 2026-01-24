@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using ExpenseManager.Domain.Entities;
-using ExpenseManager.Domain.ValueObjects;
+using ExpenseManager.API.DTOs.Categories.Requests;
 
 namespace ExpenseManager.API.Controllers;
 
@@ -11,7 +11,7 @@ public class CategoriesController : ControllerBase
     private static readonly List<Category> _categories = new();
 
     /// <summary>
-    /// Cria uma nova categoria
+    /// Create a new category
     /// </summary>
     [HttpPost]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -37,7 +37,126 @@ public class CategoriesController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Update the name of a category
+    /// </summary>
+    [HttpPut("{id}/name")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public IActionResult UpdateName(Guid id, [FromBody] UpdateCategoryNameRequest request)
+    {
+        var category = _categories.FirstOrDefault(c => c.Id == id);
+        if (category == null)
+            return NotFound(new { error = "Category not found" });
+        try
+        {
+            category.UpdateName(request.Name);
 
+            return Ok(new
+            {
+                message = "Name updated successfully",
+                id = category.Id,
+                name = category.Name,
+                updatedAt = category.UpdatedAt
+            });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
 
-    public record CreateCategoryRequest(string Name, Guid UserId, string? Description);
+    /// <summary>
+    /// Update the description of a categoria
+    /// </summary>
+    [HttpPut("{id}/description")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public IActionResult UpdateDescription(Guid id, [FromBody] UpdateCategoryDescriptionRequest request)
+    {
+        var category = _categories.FirstOrDefault(c => c.Id == id);
+        if (category == null)
+            return NotFound(new { error = "Category not found" });
+        try
+        {
+            category.UpdateDescription(request.Description);
+            return Ok(new
+            {
+                message = "Description updated successfully",
+                id = category.Id,
+                description = category.Description,
+                updatedAt = category.UpdatedAt
+            });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// List all Categories
+    /// </summary>
+    [HttpGet]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public IActionResult GetAllCategories()
+    {
+        var categories = _categories.Select(c => new
+        {
+            id = c.Id,
+            name = c.Name,
+            description = c.Description,
+            userId = c.UserId,
+            createdAt = c.CreatedAt,
+            updatedAt = c.UpdatedAt
+        });
+
+        return Ok(categories);
+    }
+
+    /// <summary>
+    /// Get a Category by ID
+    /// </summary>
+    [HttpGet("{id}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public IActionResult GetById(Guid id)
+    {
+        var category = _categories.FirstOrDefault(c => c.Id == id);
+
+        if (category == null)
+            return NotFound(new { error = "Category not found" });
+
+        return Ok(new
+        {
+            id = category.Id,
+            name = category.Name,
+            description = category.Description,
+            userId = category.UserId,
+            createdAt = category.CreatedAt,
+            updatedAt = category.UpdatedAt
+        });
+    }
+
+    /// <summary>
+    /// List all Categories of a specific user
+    /// </summary>
+    [HttpGet("user/{userId}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public IActionResult GetByUserId(Guid userId)
+    {
+        var categories = _categories
+            .Where(c => c.UserId == userId)
+            .Select(c => new
+            {
+                id = c.Id,
+                name = c.Name,
+                description = c.Description,
+                createdAt = c.CreatedAt
+            });
+
+        return Ok(categories);
+    }
 }
