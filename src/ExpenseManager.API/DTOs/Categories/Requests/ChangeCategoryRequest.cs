@@ -1,10 +1,15 @@
 ﻿namespace ExpenseManager.API.DTOs.Categories.Requests;
 
 /// <summary>
-/// Request to update category description
+/// Request to change category 
 /// </summary>
-public record UpdateCategoryDescriptionRequest
+
+public record ChangeCategoryRequest
 {
+    /// <summary>
+    /// New category name
+    /// </summary>
+    public required string Name { get; init; }
     /// <summary>
     /// New category description
     /// </summary>

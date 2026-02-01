@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using ExpenseManager.Domain.Entities;
+using ExpenseManager.Application.Interfaces;
 using ExpenseManager.API.DTOs.Categories.Requests;
 
 namespace ExpenseManager.API.Controllers;
@@ -8,28 +9,54 @@ namespace ExpenseManager.API.Controllers;
 [Route("api/[controller]")]
 public class CategoriesController : ControllerBase
 {
-    private static readonly List<Category> _categories = new();
+    private readonly ICategoryRepository _categoryRepository;
+    private readonly IUserRepository _userRepository;
+
+    public CategoriesController(
+        ICategoryRepository categoryRepository,
+        IUserRepository userRepository)
+    {
+        _categoryRepository = categoryRepository;
+        _userRepository = userRepository;
+    }
 
     /// <summary>
-    /// Create a new category
+    /// Creates a new category
     /// </summary>
     [HttpPost]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public IActionResult CreateCategory([FromBody] CreateCategoryRequest request)
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> CreateCategory([FromBody] CreateCategoryRequest request)
     {
         try
         {
+            if (!await _userRepository.ExistsAsync(request.UserId))
+            {
+                return NotFound(new { error = "User not found" });
+            }
+
+            if (await _categoryRepository.NameExistsForUserAsync(request.UserId, request.Name))
+            {
+                return Conflict(new { error = "Category name already exists for this user" });
+            }
+
             var category = new Category(request.Name, request.UserId, request.Description);
-            _categories.Add(category);
-            return Ok(new
-            {
-                id = category.Id,
-                name = category.Name,
-                description = category.Description,
-                userId = category.UserId,
-                createdAt = category.CreatedAt
-            });
+
+            await _categoryRepository.AddAsync(category);
+
+            return CreatedAtAction(
+                nameof(GetCategoryById),
+                new { id = category.Id },
+                new
+                {
+                    id = category.Id,
+                    name = category.Name,
+                    description = category.Description,
+                    userId = category.UserId,
+                    createdAt = category.CreatedAt
+                });
         }
         catch (ArgumentException ex)
         {
@@ -38,72 +65,15 @@ public class CategoriesController : ControllerBase
     }
 
     /// <summary>
-    /// Update the name of a category
-    /// </summary>
-    [HttpPut("{id}/name")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public IActionResult UpdateName(Guid id, [FromBody] UpdateCategoryNameRequest request)
-    {
-        var category = _categories.FirstOrDefault(c => c.Id == id);
-        if (category == null)
-            return NotFound(new { error = "Category not found" });
-        try
-        {
-            category.UpdateName(request.Name);
-
-            return Ok(new
-            {
-                message = "Name updated successfully",
-                id = category.Id,
-                name = category.Name,
-                updatedAt = category.UpdatedAt
-            });
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
-    }
-
-    /// <summary>
-    /// Update the description of a categoria
-    /// </summary>
-    [HttpPut("{id}/description")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public IActionResult UpdateDescription(Guid id, [FromBody] UpdateCategoryDescriptionRequest request)
-    {
-        var category = _categories.FirstOrDefault(c => c.Id == id);
-        if (category == null)
-            return NotFound(new { error = "Category not found" });
-        try
-        {
-            category.UpdateDescription(request.Description);
-            return Ok(new
-            {
-                message = "Description updated successfully",
-                id = category.Id,
-                description = category.Description,
-                updatedAt = category.UpdatedAt
-            });
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
-    }
-
-    /// <summary>
-    /// List all Categories
+    /// Gets all categories
     /// </summary>
     [HttpGet]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public IActionResult GetAllCategories()
+    public async Task<IActionResult> GetAllCategories()
     {
-        var categories = _categories.Select(c => new
+        var categories = await _categoryRepository.GetAllAsync();
+
+        var response = categories.Select(c => new
         {
             id = c.Id,
             name = c.Name,
@@ -113,18 +83,18 @@ public class CategoriesController : ControllerBase
             updatedAt = c.UpdatedAt
         });
 
-        return Ok(categories);
+        return Ok(response);
     }
 
     /// <summary>
-    /// Get a Category by ID
+    /// Gets a category by ID
     /// </summary>
     [HttpGet("{id}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public IActionResult GetById(Guid id)
+    public async Task<IActionResult> GetCategoryById(Guid id)
     {
-        var category = _categories.FirstOrDefault(c => c.Id == id);
+        var category = await _categoryRepository.GetByIdAsync(id);
 
         if (category == null)
             return NotFound(new { error = "Category not found" });
@@ -141,22 +111,102 @@ public class CategoriesController : ControllerBase
     }
 
     /// <summary>
-    /// List all Categories of a specific user
+    /// Gets categories by user ID
     /// </summary>
     [HttpGet("user/{userId}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public IActionResult GetByUserId(Guid userId)
+    public async Task<IActionResult> GetCategoriesByUserId(Guid userId)
     {
-        var categories = _categories
-            .Where(c => c.UserId == userId)
-            .Select(c => new
-            {
-                id = c.Id,
-                name = c.Name,
-                description = c.Description,
-                createdAt = c.CreatedAt
-            });
+        var categories = await _categoryRepository.GetByUserIdAsync(userId);
 
-        return Ok(categories);
+        var response = categories.Select(c => new
+        {
+            id = c.Id,
+            name = c.Name,
+            description = c.Description,
+            createdAt = c.CreatedAt
+        });
+
+        return Ok(response);
+    }
+
+    /// <summary>
+    /// Updates category name
+    /// </summary>
+    [HttpPut("{id}/name")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateName(Guid id, [FromBody] UpdateCategoryNameRequest request)
+    {
+        var category = await _categoryRepository.GetByIdAsync(id);
+
+        if (category == null)
+            return NotFound(new { error = "Category not found" });
+
+        try
+        {
+            category.UpdateName(request.Name);
+            await _categoryRepository.UpdateAsync(category);
+
+            return Ok(new
+            {
+                message = "Name updated successfully",
+                name = category.Name,
+                updatedAt = category.UpdatedAt
+            });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Updates category description
+    /// </summary>
+    [HttpPut("{id}/description")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateDescription(Guid id, [FromBody] UpdateCategoryDescriptionRequest request)
+    {
+        var category = await _categoryRepository.GetByIdAsync(id);
+
+        if (category == null)
+            return NotFound(new { error = "Category not found" });
+
+        try
+        {
+            category.UpdateDescription(request.Description);
+            await _categoryRepository.UpdateAsync(category);
+
+            return Ok(new
+            {
+                message = "Description updated successfully",
+                description = category.Description,
+                updatedAt = category.UpdatedAt
+            });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Deletes a category
+    /// </summary>
+    [HttpDelete("{id}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DeleteCategory(Guid id)
+    {
+        if (!await _categoryRepository.ExistsAsync(id))
+            return NotFound(new { error = "Category not found" });
+
+        await _categoryRepository.DeleteAsync(id);
+
+        return NoContent();
     }
 }

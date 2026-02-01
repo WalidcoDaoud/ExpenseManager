@@ -8,6 +8,5 @@ public record UpdateCategoryNameRequest
     /// <summary>
     /// New category name
     /// </summary>
-    /// <example>Restaurants</example>
     public required string Name { get; init; }
 }

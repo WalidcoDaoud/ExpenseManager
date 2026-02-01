@@ -8,7 +8,6 @@ public record CreateCategoryRequest
     /// <summary>
     /// Category name
     /// </summary>
-    /// <example>Food</example>
     public required string Name { get; init; }
 
     /// <summary>
@@ -19,6 +18,5 @@ public record CreateCategoryRequest
     /// <summary>
     /// Optional category description
     /// </summary>
-    /// <example>Expenses related to restaurants and groceries</example>
     public string? Description { get; init; }
 }
